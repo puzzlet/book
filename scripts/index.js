@@ -51,7 +51,22 @@ const fs = require('fs');
 const semantic = require('./semantic')
 
 
-var fnames = fs.readdirSync("../").filter(x=>x.endsWith(".md")&&x.includes(" "))
+var hanfnames = fs.readdirSync("../").filter(x=>x.endsWith(".md")&&x.match(/\d+ [^\.]+\.md/))
+var korfnames = fs.readdirSync("../").filter(x=>x.endsWith(".md")&&x.match(/\d+ [^\.]+\.kor-middle\.md/));
+var fnames = [];
+for (var i = 1; i <= 13; i++) {
+	var ii = i.toString().padStart(2, '0');
+	var candidates = korfnames.filter(x => x.startsWith(ii));
+	if (candidates.length > 0) {
+		fnames = fnames.concat(candidates);
+		continue;
+	}
+	candidates = hanfnames.filter(x => x.startsWith(ii));
+	if (candidates.length > 0) {
+		fnames = fnames.concat(candidates);
+		continue;
+	}
+}
 fnames.sort();
 var ftexts = fnames.map(x=>fs.readFileSync("../"+x).toString())
 
@@ -116,6 +131,7 @@ function matrix(bl,sem,H){
 		for (var j = 0; j < bl[i].length; j++){
 			var t = bl[i][j] 
 			var s = sem[i][j] || w
+			var tc = t.codePointAt(0)
 			if (([QL2,QL1]).includes(t)){
 				T.push({t,s,x,y})
 			}else if (([QR2,QR1]).includes(t)){
@@ -145,6 +161,30 @@ function matrix(bl,sem,H){
 				ind = 2;
 				T.push({t:"一",s,x,y})
 				y += w*2;
+			}else if ((["(", ")"]).includes(t)){
+				if (y != 0){
+					x -= w;
+					y = 0;
+					w = 1
+				}
+				ind = 0;
+			}else if ((tc >= 0x1100 && tc <= 0x115e) || (tc >= 0xa960 && tc <= 0xa97c) || (tc >= 0xac00 && tc <= 0xd7a3)){
+				var jj = j + 1
+				for (; jj < bl[i].length; jj++){
+					if (jj > j + 2)
+						break;
+					var jjc = bl[i].codePointAt(jj)
+					if (!((jjc >= 0x1161 && jjc <= 0x11ff) || (jjc >= 0xd7b0 && jjc <= 0xd7c6) || (jjc >= 0xd7cb && jjc <= 0xd7fb)))
+						break;
+				}
+				T.push({t:bl[i].substring(j,jj),s,x,y})
+				y += w;
+				if (y >= H){
+					y = ind;
+					x -= w;
+				}
+				j = jj - 1
+			// }else if (tc >= 0xac00 && tc <= 0xd7a3){
 			}else{
 				T.push({t,s,x,y})
 				y += w;
@@ -169,6 +209,7 @@ function typeset(T,F,l,r,w,h){
 		var ff = 1.1
 		var x = T[i].x*w-w*f;
 		var t = T[i].t;
+		var tc = t.codePointAt(0)
 		var cstr = "";
 		if (COLORS[T[i].s]){
 			cstr = `color:${COLORS[T[i].s]};`
@@ -191,6 +232,8 @@ function typeset(T,F,l,r,w,h){
 				O += `<div class="qr" style="top:${oy+h/2}px; left:${ox-d}px; width:${h/2+d}px; height:${h/2+d}px;">」</div>`
 			}else if (t == PRD){
 				O += `<div class="punc" style="top:${oy+h/2}px; left:${ox+h/2}px; font-size:${h*f*ff}px; ${(cstr.length)?cstr:"color:"+RED};">${t}</div>`
+			}else if ((tc >= 0x1100 && tc <= 0x11ff) || (tc >= 0xa960 && tc <= 0xa97c) || (tc >= 0xac00 && tc <= 0xd7fb)){
+				O += `<div class="text" style="top:${oy+(f>1?h/2:0)}px; left:${ox+h*0.15}px; font-size:${h*f*0.8}px; ${cstr}">${t}</div>`
 			}else{
 				var iso = (t=="〇");
 				O += `<div class="text" style="top:${oy+(f>1?h/2:0)}px; left:${ox+iso*h*0.15}px; font-size:${h*f*(iso?0.8:ff)}px; ${cstr}">${t}</div>`
@@ -581,6 +624,13 @@ var html = `
 	font-display: swap;
 	src: url('https://cdn.jsdelivr.net/gh/wenyan-lang/book@3899aad7a917d0f000716ca97fe29221fe4b56d6/assets/font.woff2') format('woff2'), url('https://cdn.jsdelivr.net/gh/wenyan-lang/book@3899aad7a917d0f000716ca97fe29221fe4b56d6/assets/font.ttf') format('truetype');
 }
+/* noto-serif-kr-regular - korean */
+@font-face {
+  font-family: 'Noto Serif KR';
+  font-style: normal;
+  font-weight: 400;
+  src: url('../assets/NotoSerifCJKkr-Regular.otf');
+}
 :root{
 	background:white;
 	overflow:hidden;
@@ -601,13 +651,13 @@ body{
 .text{
 	position:absolute;
 	color: ${BLACK};
-	font-family: QIJI;
+	font-family: QIJI, 'Noto Serif KR';
 	line-height: 45px;
 	/* border-left: 1px solid ${RED}; */
 }
 .punc{
 	position:absolute;
-	font-family: QIJI;
+	font-family: QIJI, 'Noto Serif KR';
 	z-index: 200;
 }
 .ql{
