@@ -118,6 +118,7 @@ function matrix(bl,sem,H){
 	var x = -10;
 	var y = 0;
 	var w = 1;
+	var h = w;
 	var F = [];
 	var A = [];
 	for (var i = 0; i < bl.length; i++){
@@ -127,10 +128,12 @@ function matrix(bl,sem,H){
 
 		var fen = x;
 		var ind = 0;
+		var kor = false;
+		var anno = false;
 
 		for (var j = 0; j < bl[i].length; j++){
 			var t = bl[i][j] 
-			var s = sem[i][j] || w
+			var s = anno ? 'anno' : (sem[i][j] || w);
 			var tc = t.codePointAt(0)
 			if (([QL2,QL1]).includes(t)){
 				T.push({t,s,x,y})
@@ -151,23 +154,32 @@ function matrix(bl,sem,H){
 					x -= w;
 					y = 0;
 					w = 1
+					h = 1
 				}
 				ind = 0;
 			}else if (t == "#"){
 				w = 2;
+				h = 2;
 				A.push(x)
 				x -= 1;
 			}else if (t == "-"){
 				ind = 2;
 				T.push({t:"一",s,x,y})
-				y += w*2;
-			}else if ((["(", ")"]).includes(t)){
+				y += h*2;
+			}else if (["(", ")"].includes(t)){
 				if (y != 0){
 					x -= w;
 					y = 0;
 					w = 1
+					h = 1
 				}
 				ind = 0;
+				kor = (t == "(");
+			}else if (kor && t == " "){
+				// skip
+			}else if (kor && ["[", "]"].includes(t)){
+				anno = (t == "[");
+				h = anno ? (w * 0.7) : w;
 			}else if ((tc >= 0x1100 && tc <= 0x115e) || (tc >= 0xa960 && tc <= 0xa97c) || (tc >= 0xac00 && tc <= 0xd7a3)){
 				var jj = j + 1
 				for (; jj < bl[i].length; jj++){
@@ -178,7 +190,7 @@ function matrix(bl,sem,H){
 						break;
 				}
 				T.push({t:bl[i].substring(j,jj),s,x,y})
-				y += w;
+				y += h;
 				if (y >= H){
 					y = ind;
 					x -= w;
@@ -187,7 +199,7 @@ function matrix(bl,sem,H){
 			// }else if (tc >= 0xac00 && tc <= 0xd7a3){
 			}else{
 				T.push({t,s,x,y})
-				y += w;
+				y += h;
 				if (y >= H){
 					y = ind;
 					x -= w;
@@ -206,6 +218,9 @@ function typeset(T,F,l,r,w,h){
 	var ymax = 0;
 	for (var i = 0; i < T.length; i++){
 		var f = parseInt(T[i].s) || 1;
+		if (T[i].s == 'anno') {
+			f *= 0.7;
+		}
 		var ff = 1.1
 		var x = T[i].x*w-w*f;
 		var t = T[i].t;
