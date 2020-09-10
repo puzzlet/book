@@ -644,7 +644,7 @@ var html = `
   font-family: 'Noto Serif KR';
   font-style: normal;
   font-weight: 400;
-  src: url('../assets/NotoSerifCJKkr-Regular.otf');
+  src: url('NotoSerifCJKkr-Regular.otf');
 }
 :root{
 	background:white;
